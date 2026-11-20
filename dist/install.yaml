@@ -617,7 +617,7 @@ spec:
         - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         command:
         - /manager
-        image: ghcr.io/brunnerne/ctfpilot-flight-ops-groundcontrol:1.6.13
+        image: ghcr.io/brunnerne/ctfpilot-flight-ops-groundcontrol:1.0.0-r.1
         livenessProbe:
           httpGet:
             path: /healthz
