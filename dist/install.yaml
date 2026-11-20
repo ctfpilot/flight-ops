@@ -48,14 +48,17 @@ spec:
             description: FlightPlanSpec defines the desired state of FlightPlan
             properties:
               category:
-                description: Category is the type of challenge (web, pwn, crypto, etc.)
+                description: Category is the type of challenge (web, pwn, crypto,
+                  etc.)
                 type: string
               defaultTTL:
-                description: DefaultTTL is the default Time-To-Live in seconds for instanced flights (e.g., 3600)
+                description: DefaultTTL is the default Time-To-Live in seconds for
+                  instanced flights (e.g., 3600)
                 format: int32
                 type: integer
               endpoints:
-                description: Endpoints defines domain routing rules for Traefik and connection strings
+                description: Endpoints defines domain routing rules for Traefik and
+                  connection strings
                 properties:
                   subdomains:
                     description: |-
@@ -70,11 +73,13 @@ spec:
                             Supports variable substitution like "{{ .host }}" or "nc {{ .host }} 1337"
                           type: string
                         name:
-                          description: Name is the subdomain prefix (e.g. "api", "admin", "pwn")
+                          description: Name is the subdomain prefix (e.g. "api", "admin",
+                            "pwn")
                           type: string
                         protocol:
                           default: web
-                          description: Protocol dictates how Traefik routes traffic (web = HTTP Ingress, tcp = IngressRouteTCP)
+                          description: Protocol dictates how Traefik routes traffic
+                            (web = HTTP Ingress, tcp = IngressRouteTCP)
                           enum:
                           - web
                           - tcp
@@ -98,7 +103,8 @@ spec:
                 - instanced
                 type: string
               resources:
-                description: Resources contains raw Kubernetes manifests (Deployments, Services, Traefik Ingresses)
+                description: Resources contains raw Kubernetes manifests (Deployments,
+                  Services, Traefik Ingresses)
                 items:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
@@ -151,16 +157,20 @@ spec:
           metadata:
             type: object
           spec:
-            description: FlightSpec defines the desired state of an active player mission
+            description: FlightSpec defines the desired state of an active player
+              mission
             properties:
               deploymentID:
-                description: DeploymentID is the unique identifier (UUID) for this specific execution
+                description: DeploymentID is the unique identifier (UUID) for this
+                  specific execution
                 type: string
               domain:
-                description: Domain is the base domain used to construct instanced subdomains (e.g. "inst.ctfpilot.com")
+                description: Domain is the base domain used to construct instanced
+                  subdomains (e.g. "inst.ctfpilot.com")
                 type: string
               flightPlanRef:
-                description: FlightPlanRef is the metadata name/slug of the parent FlightPlan
+                description: FlightPlanRef is the metadata name/slug of the parent
+                  FlightPlan
                 type: string
               ownerID:
                 description: OwnerID is the player or team ID requesting the instance
@@ -192,15 +202,18 @@ spec:
                   type: string
                 type: array
               expiresAt:
-                description: ExpiresAt is the timestamp when GroundControl will clean up this instance
+                description: ExpiresAt is the timestamp when GroundControl will clean
+                  up this instance
                 format: date-time
                 type: string
               launchedAt:
-                description: LaunchedAt is the timestamp when reconciliation completed and pods went ready
+                description: LaunchedAt is the timestamp when reconciliation completed
+                  and pods went ready
                 format: date-time
                 type: string
               phase:
-                description: Phase is the current execution state (Pending, InFlight, Landed, Failed)
+                description: Phase is the current execution state (Pending, InFlight,
+                  Landed, Failed)
                 enum:
                 - Pending
                 - InFlight
@@ -604,7 +617,7 @@ spec:
         - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         command:
         - /manager
-        image: ghcr.io/ctfpilot/flight-ops-groundcontrol:1.6.13
+        image: ghcr.io/ctfpilot/flight-ops-groundcontrol:1.0.1-r.1
         livenessProbe:
           httpGet:
             path: /healthz
