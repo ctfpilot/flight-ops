@@ -1,8 +1,8 @@
 dispatcher:
   replicas: 2
   image:
-    repository: ghcr.io/brunnerne/ctfpilot-flight-ops-dispatcher
-    tag: 1.0.0-r.1
+    repository: ghcr.io/ctfpilot/flight-ops-dispatcher
+    tag: 1.6.13
     pullPolicy: IfNotPresent
   port: 8080
   namespace: flights-instanced
@@ -14,8 +14,8 @@ dispatcher:
   jwt:
     audience: ground-control-dispatcher
     issuers:
-      - issuer1
-      - issuer2
+    - issuer1
+    - issuer2
     expiration: 3600
     secret:
       existingSecret: jwt-secret
@@ -65,9 +65,9 @@ dispatcher:
     readOnlyRootFilesystem: true
     capabilities:
       drop:
-        - ALL
+      - ALL
   pullSecrets:
-    - name: dockerconfigjson-github-com
+  - name: dockerconfigjson-github-com
   networkPolicy:
     allowedNamespaceLabels:
       kubernetes.io/metadata.name: traefik
