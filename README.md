@@ -261,7 +261,7 @@ Install the CRDs and operator from source:
 
 ```sh
 make install
-make deploy IMG=ghcr.io/brunnerne/ctfpilot-flight-ops-groundcontrol:latest
+make deploy IMG=ghcr.io/ctfpilot/flight-ops-groundcontrol:latest
 ```
 
 #### Packaged manifests

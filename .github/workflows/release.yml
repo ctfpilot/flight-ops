@@ -33,7 +33,7 @@ jobs:
       id-token: write
     with:
       runner: ubuntu-latest
-      repository: brunnerne/ctfpilot-flight-ops
+      repository: ctfpilot/flight-ops
       semver: ${{ needs.release.outputs.version }}
       dockerfile: Dockerfile
       image_name: ${{ github.repository }}-groundcontrol
@@ -54,7 +54,7 @@ jobs:
       id-token: write
     with:
       runner: ubuntu-latest
-      repository: brunnerne/ctfpilot-flight-ops
+      repository: ctfpilot/flight-ops
       semver: ${{ needs.release.outputs.version }}
       dockerfile: Dockerfile.dispatcher
       image_name: ${{ github.repository }}-dispatcher

@@ -8,21 +8,21 @@ kind: ClusterRole
 metadata:
   name: dispatcher-access
 rules:
-  - apiGroups: ["challenges.ctfpilot.com"]
-    resources: ["flightplans"]
-    verbs: ["get", "list"]
-  - apiGroups: ["challenges.ctfpilot.com"]
-    resources: ["flights"]
-    verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: [ "challenges.ctfpilot.com" ]
+  resources: [ "flightplans" ]
+  verbs: [ "get", "list" ]
+- apiGroups: [ "challenges.ctfpilot.com" ]
+  resources: [ "flights" ]
+  verbs: [ "get", "list", "create", "update", "patch", "delete" ]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: dispatcher-access-binding
 subjects:
-  - kind: ServiceAccount
-    name: dispatcher
-    namespace: default
+- kind: ServiceAccount
+  name: dispatcher
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: dispatcher-access
@@ -64,79 +64,79 @@ spec:
     spec:
       serviceAccountName: dispatcher
       imagePullSecrets:
-        - name: ghcr
+      - name: ghcr
       containers:
-        - name: challenge-provider
-          image: ghcr.io/brunnerne/ctfpilot-flight-ops-dispatcher:1.2.1
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8080
-              name: http
-            - containerPort: 9090
-              name: metrics
-          env:
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: jwt-secret
-                  key: secretKey
-            - name: JWT_AUDIENCE
-              valueFrom:
-                secretKeyRef:
-                  name: jwt-secret
-                  key: audience
-            - name: JWT_ISSUERS
-              valueFrom:
-                secretKeyRef:
-                  name: jwt-secret
-                  key: issuers
-            - name: SERVER_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: dispatcher-secret
-                  key: secretKey
-            - name: MAX_CONCURRENT_FLIGHTS
-              value: "5"
-            - name: FLIGHT_DOMAIN
-              value: "localhost"
-            - name: METRICS_BIND_ADDRESS
-              value: ":9090"
-            - name: REDIS_ADDR
-              value: "redis:6379"
-            - name: REDIS_PASSWORD
-              value: ""
-            - name: REDIS_DB
-              value: "0"
-            - name: REDIS_KEY_PREFIX
-              value: "dispatcher:rate-limit"
-            - name: RATE_LIMIT_LIST_MAX
-              value: "120"
-            - name: RATE_LIMIT_LIST_WINDOW_SECONDS
-              value: "60"
-            - name: RATE_LIMIT_READ_MAX
-              value: "120"
-            - name: RATE_LIMIT_READ_WINDOW_SECONDS
-              value: "60"
-            - name: RATE_LIMIT_DEPART_MAX
-              value: "20"
-            - name: RATE_LIMIT_DEPART_WINDOW_SECONDS
-              value: "60"
-            - name: RATE_LIMIT_REFRESH_MAX
-              value: "20"
-            - name: RATE_LIMIT_REFRESH_WINDOW_SECONDS
-              value: "60"
-            - name: RATE_LIMIT_LAND_MAX
-              value: "20"
-            - name: RATE_LIMIT_LAND_WINDOW_SECONDS
-              value: "60"
-          livenessProbe:
-            httpGet:
-              path: /status
-              port: 8080
-          readinessProbe:
-            httpGet:
-              path: /status
-              port: 8080
+      - name: challenge-provider
+        image: ghcr.io/ctfpilot/flight-ops-dispatcher:1.2.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: secretKey
+        - name: JWT_AUDIENCE
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: audience
+        - name: JWT_ISSUERS
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: issuers
+        - name: SERVER_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: dispatcher-secret
+              key: secretKey
+        - name: MAX_CONCURRENT_FLIGHTS
+          value: "5"
+        - name: FLIGHT_DOMAIN
+          value: "localhost"
+        - name: METRICS_BIND_ADDRESS
+          value: ":9090"
+        - name: REDIS_ADDR
+          value: "redis:6379"
+        - name: REDIS_PASSWORD
+          value: ""
+        - name: REDIS_DB
+          value: "0"
+        - name: REDIS_KEY_PREFIX
+          value: "dispatcher:rate-limit"
+        - name: RATE_LIMIT_LIST_MAX
+          value: "120"
+        - name: RATE_LIMIT_LIST_WINDOW_SECONDS
+          value: "60"
+        - name: RATE_LIMIT_READ_MAX
+          value: "120"
+        - name: RATE_LIMIT_READ_WINDOW_SECONDS
+          value: "60"
+        - name: RATE_LIMIT_DEPART_MAX
+          value: "20"
+        - name: RATE_LIMIT_DEPART_WINDOW_SECONDS
+          value: "60"
+        - name: RATE_LIMIT_REFRESH_MAX
+          value: "20"
+        - name: RATE_LIMIT_REFRESH_WINDOW_SECONDS
+          value: "60"
+        - name: RATE_LIMIT_LAND_MAX
+          value: "20"
+        - name: RATE_LIMIT_LAND_WINDOW_SECONDS
+          value: "60"
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: 8080
 ---
 apiVersion: v1
 kind: Service
@@ -145,11 +145,11 @@ metadata:
 spec:
   type: "NodePort"
   ports:
-    - port: 80
-      targetPort: http
-      protocol: TCP
-      name: http
-      nodePort: 30080
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+    nodePort: 30080
   selector:
     app.kubernetes.io/name: dispatcher
 ---
@@ -164,9 +164,9 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 9090
-      targetPort: metrics
-      protocol: TCP
-      name: metrics
+  - port: 9090
+    targetPort: metrics
+    protocol: TCP
+    name: metrics
   selector:
     app.kubernetes.io/name: dispatcher
