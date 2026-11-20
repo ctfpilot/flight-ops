@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dispatcher.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dispatcher.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.dispatcher.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dispatcher.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dispatcher.selectorLabels" . | nindent 8 }}
+        {{- with .Values.dispatcher.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- $annotations := dict "kubectl.kubernetes.io/default-container" "dispatcher" -}}
+      {{- with .Values.dispatcher.podAnnotations }}
+      {{- $annotations = merge $annotations . -}}
+      {{- end }}
+      annotations:
+        {{- toYaml $annotations | nindent 8 }}
+    spec:
+      {{- with .Values.dispatcher.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "dispatcher.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.dispatcher.securityContext | nindent 8 }}
+      containers:
+        - name: dispatcher
+          image: {{ .Values.dispatcher.image.repository }}:{{ .Values.dispatcher.image.tag }}
+          imagePullPolicy: {{ .Values.dispatcher.image.pullPolicy }}
+          env:
+            - name: PORT
+              value: {{ .Values.dispatcher.port | quote }}
+            - name: NAMESPACE
+              value: {{ .Values.dispatcher.namespace | quote }}
+            - name: JWT_AUDIENCE
+              value: {{ .Values.dispatcher.jwt.audience | quote }}
+            - name: JWT_ISSUERS
+              value: {{ join "," .Values.dispatcher.jwt.issuers | quote }}
+            - name: JWT_EXPIRATION
+              value: {{ .Values.dispatcher.jwt.expiration | quote }}
+            - name: MAX_CONCURRENT_FLIGHTS
+              value: {{ .Values.dispatcher.maxConcurrentFlights | quote }}
+            - name: FLIGHT_DOMAIN
+              value: {{ .Values.dispatcher.flightDomain | quote }}
+            - name: METRICS_BIND_ADDRESS
+              value: :{{ .Values.metrics.service.port }}
+            - name: REDIS_ADDR
+              value: {{ .Values.dispatcher.redis.address | quote }}
+            - name: REDIS_DB
+              value: {{ .Values.dispatcher.redis.db | quote }}
+            - name: REDIS_KEY_PREFIX
+              value: {{ .Values.dispatcher.redis.keyPrefix | quote }}
+            - name: RATE_LIMIT_TIMEOUT_MS
+              value: {{ .Values.dispatcher.redis.requestTimeoutMs | quote }}
+            - name: RATE_LIMIT_LIST_MAX
+              value: {{ .Values.dispatcher.rateLimits.list.max | quote }}
+            - name: RATE_LIMIT_LIST_WINDOW_SECONDS
+              value: {{ .Values.dispatcher.rateLimits.list.windowSeconds | quote }}
+            - name: RATE_LIMIT_READ_MAX
+              value: {{ .Values.dispatcher.rateLimits.read.max | quote }}
+            - name: RATE_LIMIT_READ_WINDOW_SECONDS
+              value: {{ .Values.dispatcher.rateLimits.read.windowSeconds | quote }}
+            - name: RATE_LIMIT_DEPART_MAX
+              value: {{ .Values.dispatcher.rateLimits.depart.max | quote }}
+            - name: RATE_LIMIT_DEPART_WINDOW_SECONDS
+              value: {{ .Values.dispatcher.rateLimits.depart.windowSeconds | quote }}
+            - name: RATE_LIMIT_REFRESH_MAX
+              value: {{ .Values.dispatcher.rateLimits.refresh.max | quote }}
+            - name: RATE_LIMIT_REFRESH_WINDOW_SECONDS
+              value: {{ .Values.dispatcher.rateLimits.refresh.windowSeconds | quote }}
+            - name: RATE_LIMIT_LAND_MAX
+              value: {{ .Values.dispatcher.rateLimits.land.max | quote }}
+            - name: RATE_LIMIT_LAND_WINDOW_SECONDS
+              value: {{ .Values.dispatcher.rateLimits.land.windowSeconds | quote }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dispatcher.jwt.secret.existingSecret | quote }}
+                  key: {{ .Values.dispatcher.jwt.secret.key | quote }}
+            - name: SERVER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dispatcher.serverSecret.existingSecret | quote }}
+                  key: {{ .Values.dispatcher.serverSecret.key | quote }}
+            {{- if .Values.dispatcher.redis.password.existingSecret }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dispatcher.redis.password.existingSecret | quote }}
+                  key: {{ .Values.dispatcher.redis.password.key | quote }}
+            {{- else }}
+            - name: REDIS_PASSWORD
+              value: {{ .Values.dispatcher.redis.password.value | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.dispatcher.port }}
+              protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.service.port }}
+              protocol: TCP
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.dispatcher.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.dispatcher.containerSecurityContext | nindent 12 }}

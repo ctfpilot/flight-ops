@@ -1,0 +1,82 @@
+apiVersion: challenges.ctfpilot.com/v1alpha1
+kind: FlightPlan
+metadata:
+  name: echo-hello-world
+  labels:
+    flight.ctfpilot.com/mode: "instanced"
+    flight.ctfpilot.com/plan: "echo-hello-world"
+    flight.ctfpilot.com/category: "web"
+    ctfpilot.com/component: "flightplan"
+spec:
+  mode: instanced
+  category: web
+  defaultTTL: 3600
+  firstDepartureAt: 0
+  endpoints:
+    subdomains:
+      - name: web
+        protocol: web
+        connectionTemplate: "https://${host}"
+  resources:
+    # ------------------------------------------------------------------
+    # Resource 1: Deployment (traefik/whoami)
+    # ------------------------------------------------------------------
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: echo-app
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: echo-app-{{ .DeploymentID }}
+        template:
+          metadata:
+            labels:
+              app: echo-app-{{ .DeploymentID }}
+              instanced.challenges.ctfpilot.com/deployment: "{{ .DeploymentID }}"
+              instanced.challenges.ctfpilot.com/owner: "{{ .OwnerID }}"
+          spec:
+            containers:
+              - name: web
+                image: traefik/whoami:latest
+                imagePullPolicy: IfNotPresent
+                ports:
+                  - containerPort: 80
+                    name: http-port
+                resources:
+                  limits:
+                    cpu: 50m
+                    memory: 64Mi
+                  requests:
+                    cpu: 10m
+                    memory: 16Mi
+                env:
+                  - name: WHOAMI_NAME
+                    value: "Flight Instance {{ .DeploymentID }}"
+                  - name: CTF_FLAG
+                    value: "CTF{l0c4l_d3v_3ch0_s3rv3r_5ucc3ss}"
+                  - name: OWNER_ID
+                    value: "{{ .OwnerID }}"
+                readinessProbe:
+                  httpGet:
+                    path: /health
+                    port: 80
+                  initialDelaySeconds: 2
+                  periodSeconds: 5
+
+    # ------------------------------------------------------------------
+    # Resource 2: Internal ClusterIP Service
+    # ------------------------------------------------------------------
+    - apiVersion: v1
+      kind: Service
+      metadata:
+        name: echo-app
+      spec:
+        type: ClusterIP
+        selector:
+          app: echo-app-{{ .DeploymentID }}
+        ports:
+          - port: 80
+            targetPort: 80
+            name: http-port

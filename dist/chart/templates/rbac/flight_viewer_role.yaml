@@ -1,0 +1,30 @@
+{{- if .Values.rbac.enable }}
+# This rule is not used by the project flight-ops itself.
+# It is provided to allow the cluster admin to help manage permissions for users.
+#
+# Grants read-only access to challenges.ctfpilot.com resources.
+# This role is intended for users who need visibility into these resources
+# without permissions to modify them. It is ideal for monitoring purposes and limited-access viewing.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  name: flight-viewer-role
+rules:
+  - apiGroups:
+      - challenges.ctfpilot.com
+    resources:
+      - flights
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - challenges.ctfpilot.com
+    resources:
+      - flights/status
+    verbs:
+      - get
+{{- end -}}

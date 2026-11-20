@@ -1,0 +1,597 @@
+openapi: 3.0.3
+info:
+  title: Flight Ops Dispatcher API
+  version: 1.0.0
+  description: |
+    HTTP API for managing Flight and FlightPlan resources.
+
+    Authentication uses a Bearer JWT. The token must be signed with the shared HMAC secret and include the dispatcher claims required by the server.
+
+    Flight-plan responses are sanitized copies of the underlying resources. The dispatcher redacts raw `resources` data and caller-scoped plan refresh/land operations only affect flights owned by the caller's owner and terminal.
+servers:
+  - url: /
+paths:
+  /api/status:
+    get:
+      operationId: getApiStatus
+      summary: Check dispatcher health
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "500":
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+  /status:
+    get:
+      operationId: getStatus
+      summary: Check dispatcher health
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "500":
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+  /api/version:
+    get:
+      operationId: getVersion
+      summary: Read dispatcher version
+      security: []
+      responses:
+        "200":
+          description: Current dispatcher version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponse"
+  /api/flightplans:
+    get:
+      operationId: listFlightPlans
+      summary: List accessible flight plans
+      description: "Requires a bearer JWT with action `list` and `admin: true`. Returns sanitized flight plans with redacted resources."
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Flight plan list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlightPlanListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flightplans/{name}:
+    get:
+      operationId: getFlightPlan
+      summary: Read a flight plan
+      description: "Requires a bearer JWT with action `read`, `admin: true`, and a matching `flight_plan` claim."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FlightPlanName"
+      responses:
+        "200":
+          description: Flight plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlightPlanResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flightplans/{name}/flights:
+    get:
+      operationId: listFlightPlanFlights
+      summary: List flights for a flight plan
+      description: "Requires a bearer JWT with action `list` and a matching `flight_plan` claim. Non-admin callers only see flights owned by their owner and terminal."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FlightPlanName"
+      responses:
+        "200":
+          description: Flights for the flight plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlightListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flightplans/{name}/depart:
+    post:
+      operationId: departFlightPlan
+      summary: Create a flight from a flight plan
+      description: "Requires a bearer JWT with action `depart` and a matching `flight_plan` claim."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FlightPlanName"
+      responses:
+        "200":
+          description: Created flight
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlightResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flightplans/{name}/refresh:
+    post:
+      operationId: refreshFlightPlan
+      summary: Refresh all flights for a flight plan
+      description: "Requires a bearer JWT with action `refresh` and a matching `flight_plan` claim. Only the caller's flights for that plan are refreshed."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FlightPlanName"
+      responses:
+        "200":
+          description: Refreshed flights for the plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlightListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flightplans/{name}/land:
+    post:
+      operationId: landFlightPlan
+      summary: Land all flights for a flight plan
+      description: "Requires a bearer JWT with action `land` and a matching `flight_plan` claim. Only the caller's flights for that plan are landed."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FlightPlanName"
+      responses:
+        "200":
+          description: Landing result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LandResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flights:
+    get:
+      operationId: listFlights
+      summary: List flights
+      description: "Requires a bearer JWT with action `list`. Non-admin callers only see flights owned by their owner and terminal."
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Flight list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlightListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flights/{name}:
+    get:
+      operationId: getFlight
+      summary: Read a flight
+      description: "Requires a bearer JWT with action `read`. Non-admin callers can only read a flight that matches their owner and terminal."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FlightName"
+      responses:
+        "200":
+          description: Flight
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlightResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flights/{name}/refresh:
+    post:
+      operationId: refreshFlight
+      summary: Refresh a flight TTL
+      description: "Requires a bearer JWT with action `refresh` and a matching `flight` claim."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FlightName"
+      responses:
+        "200":
+          description: Refreshed flight
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlightResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/flights/{name}/land:
+    post:
+      operationId: landFlight
+      summary: Land a flight
+      description: "Requires a bearer JWT with action `land` and a matching `flight` claim."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FlightName"
+      responses:
+        "200":
+          description: Landing result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LandResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    FlightPlanName:
+      name: name
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/K8sName"
+    FlightName:
+      name: name
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/K8sName"
+  responses:
+    BadRequestError:
+      description: Invalid request
+      content:
+        text/plain:
+          schema:
+            type: string
+    UnauthorizedError:
+      description: Authentication failed
+      content:
+        text/plain:
+          schema:
+            type: string
+    ForbiddenError:
+      description: Caller does not have permission
+      content:
+        text/plain:
+          schema:
+            type: string
+    TooManyRequestsError:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          description: Time in seconds before the request may be retried
+          schema:
+            type: string
+      content:
+        text/plain:
+          schema:
+            type: string
+    ServiceUnavailableError:
+      description: Rate limiter unavailable
+      content:
+        text/plain:
+          schema:
+            type: string
+    InternalServerError:
+      description: Internal error
+      content:
+        text/plain:
+          schema:
+            type: string
+  schemas:
+    K8sName:
+      type: string
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+      minLength: 1
+      maxLength: 253
+    StatusResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          example: CTFd manager
+        status:
+          type: string
+          example: ok
+      required:
+        - status
+    VersionResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: string
+      required:
+        - version
+    LandResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+          example: Flight landed successfully
+      required:
+        - message
+    FlightPlanListResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FlightPlan"
+      required:
+        - items
+    FlightPlanResponse:
+      $ref: "#/components/schemas/FlightPlan"
+    FlightListResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Flight"
+      required:
+        - items
+    FlightResponse:
+      $ref: "#/components/schemas/Flight"
+    FlightOwner:
+      type: object
+      additionalProperties: false
+      properties:
+        owner:
+          type: string
+        terminal:
+          type: string
+      required:
+        - owner
+        - terminal
+    FlightPhase:
+      type: string
+      enum:
+        - Pending
+        - InFlight
+        - Landed
+        - Failed
+    FlightStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        phase:
+          $ref: "#/components/schemas/FlightPhase"
+        connectionStrings:
+          type: array
+          items:
+            type: string
+        launchedAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+    FlightSpec:
+      type: object
+      additionalProperties: false
+      properties:
+        flightPlanRef:
+          type: string
+        ownerID:
+          type: string
+        terminalID:
+          type: string
+        deploymentID:
+          type: string
+        ttl:
+          type: integer
+          format: int32
+          minimum: 0
+        domain:
+          type: string
+      required:
+        - flightPlanRef
+        - ownerID
+        - terminalID
+        - deploymentID
+        - domain
+    Flight:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        owner:
+          $ref: "#/components/schemas/FlightOwner"
+        spec:
+          $ref: "#/components/schemas/FlightSpec"
+        status:
+          $ref: "#/components/schemas/FlightStatus"
+      required:
+        - name
+        - owner
+        - spec
+        - status
+    EndpointProtocol:
+      type: string
+      enum:
+        - web
+        - tcp
+    SubdomainSpec:
+      type: object
+      additionalProperties: false
+      properties:
+        protocol:
+          $ref: "#/components/schemas/EndpointProtocol"
+        name:
+          type: string
+      required:
+        - protocol
+        - name
+    EndpointsSpec:
+      type: object
+      additionalProperties: false
+      properties:
+        subdomains:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubdomainSpec"
+        connectionTemplate:
+          type: string
+    FlightPlanSpec:
+      type: object
+      additionalProperties: false
+      properties:
+        mode:
+          type: string
+          enum:
+            - shared
+            - instanced
+        category:
+          type: string
+        defaultTTL:
+          type: integer
+          format: int32
+        firstDepartureAt:
+          type: integer
+          format: int64
+        endpoints:
+          $ref: "#/components/schemas/EndpointsSpec"
+        resources:
+          type: array
+          nullable: true
+          description: "Raw Kubernetes manifests stored on the FlightPlan CRD. Dispatcher API responses redact this field and return null."
+          items:
+            type: object
+            additionalProperties: true
+      required:
+        - mode
+        - category
+        - resources
+    FlightPlan:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        spec:
+          $ref: "#/components/schemas/FlightPlanSpec"
+      required:
+        - name
+        - spec

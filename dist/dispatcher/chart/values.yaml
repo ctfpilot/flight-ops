@@ -1,0 +1,99 @@
+dispatcher:
+  replicas: 2
+  image:
+    repository: ghcr.io/brunnerne/ctfpilot-flight-ops-dispatcher
+    tag: 1.6.13
+    pullPolicy: IfNotPresent
+  port: 8080
+  namespace: flights-instanced
+  flightDomain: localhost
+  maxConcurrentFlights: 5
+  serverSecret:
+    existingSecret: dispatcher-secret
+    key: secretKey
+  jwt:
+    audience: ground-control-dispatcher
+    issuers:
+      - issuer1
+      - issuer2
+    expiration: 3600
+    secret:
+      existingSecret: jwt-secret
+      key: secretKey
+  redis:
+    address: redis:6379
+    db: 0
+    keyPrefix: dispatcher:rate-limit
+    requestTimeoutMs: 500
+    password:
+      existingSecret: ""
+      key: password
+      value: ""
+  rateLimits:
+    list:
+      max: 120
+      windowSeconds: 60
+    read:
+      max: 120
+      windowSeconds: 60
+    depart:
+      max: 20
+      windowSeconds: 60
+    refresh:
+      max: 20
+      windowSeconds: 60
+    land:
+      max: 20
+      windowSeconds: 60
+  podLabels: {}
+  podAnnotations: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  pullSecrets:
+    - name: dockerconfigjson-github-com
+  networkPolicy:
+    allowedNamespaceLabels:
+      kubernetes.io/metadata.name: traefik
+
+serviceAccount:
+  create: true
+  name: dispatcher
+
+service:
+  type: ClusterIP
+  port: 80
+
+metrics:
+  enabled: true
+  service:
+    port: 9090
+  serviceMonitor:
+    enabled: true
+    namespace: ""
+    interval: 30s
+    scrapeTimeout: 10s
+    additionalLabels:
+      release: kube-prometheus-stack
+  networkPolicy:
+    allowedNamespaceLabels:
+      kubernetes.io/metadata.name: monitoring
+
+rbac:
+  enabled: true

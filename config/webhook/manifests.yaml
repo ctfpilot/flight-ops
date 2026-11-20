@@ -1,0 +1,52 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-challenges-ctfpilot-com-v1alpha1-flightplan
+  failurePolicy: Fail
+  name: mflightplan-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - challenges.ctfpilot.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - flightplans
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-challenges-ctfpilot-com-v1alpha1-flightplan
+  failurePolicy: Fail
+  name: vflightplan-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - challenges.ctfpilot.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - flightplans
+  sideEffects: None

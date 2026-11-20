@@ -1,0 +1,48 @@
+{
+    "branches": [
+        "main",
+        {
+            "name": "develop",
+            "prerelease": "r"
+        }
+    ],
+    "plugins": [
+        [
+            "@semantic-release/commit-analyzer",
+            {
+                "preset": "conventionalcommits"
+            }
+        ],
+        [
+            "@semantic-release/release-notes-generator",
+            {
+                "preset": "conventionalcommits"
+            }
+        ],
+        [
+            "@semantic-release/github",
+            {
+                "successComment": false,
+                "assets": [
+                    "release-assets/*.tgz"
+                ]
+            }
+        ],
+        [
+            "@semantic-release/exec",
+            {
+                "prepareCmd": "echo ${nextRelease.version} > version.txt && curl -L -o kubebuilder \"https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)\" && chmod +x kubebuilder && mkdir -p ~/.local/bin && mv kubebuilder ~/.local/bin/ && curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash && make build-installer IMG=ghcr.io/brunnerne/ctfpilot-flight-ops-groundcontrol:${nextRelease.version} && ~/.local/bin/kubebuilder edit --plugins=helm/v1-alpha && sed -i \"s/^version: .*/version: ${nextRelease.version}/\" dist/chart/Chart.yaml && sed -i \"s/^appVersion: .*/appVersion: \\\"${nextRelease.version}\\\"/\" dist/chart/Chart.yaml && sed -i \"s/      tag: .*/      tag: ${nextRelease.version}/\" dist/chart/values.yaml && sed -i \"s/^version: .*/version: ${nextRelease.version}/\" dist/dispatcher/chart/Chart.yaml && sed -i \"s/^appVersion: .*/appVersion: \\\"${nextRelease.version}\\\"/\" dist/dispatcher/chart/Chart.yaml && sed -i \"s/    tag: .*/    tag: ${nextRelease.version}/\" dist/dispatcher/chart/values.yaml && rm -rf release-assets && mkdir -p release-assets && helm package dist/chart -d release-assets && helm package dist/dispatcher/chart -d release-assets",
+                "publishCmd": "echo 'Published version ${nextRelease.version}'"
+            }
+        ],
+        [
+            "@semantic-release/git",
+            {
+                "assets": [
+                    "dist/"
+                ],
+                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+            }
+        ]
+    ]
+}

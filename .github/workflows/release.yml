@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  release:
+    name: Release
+    uses: ctfpilot/ci/.github/workflows/release.yml@v1.6.0-r.2
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    secrets:
+      RELEASE_GH_TOKEN: ${{ secrets.RELEASE_GH_TOKEN }}
+    with:
+      repository: ctfpilot/<repository-name>
+      ENVIRONMENT: Release
+      INSTALL_GO: true
+
+  docker-groundcontrol:
+    name: Docker build and push Ground Control Operator
+    needs:
+      - release
+    uses: ctfpilot/ci/.github/workflows/docker.yml@v1.6.0-r.2
+    if: needs.release.outputs.version != '' && needs.release.outputs.version != null
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    with:
+      runner: ubuntu-latest
+      repository: brunnerne/ctfpilot-flight-ops
+      semver: ${{ needs.release.outputs.version }}
+      dockerfile: Dockerfile
+      image_name: ${{ github.repository }}-groundcontrol
+      arguments: |
+        VERSION=${{ needs.release.outputs.version }}
+      cacheFrom: ""
+      cacheTo: ""
+
+  docker-dispatcher:
+    name: Docker build and push Dispatcher
+    needs:
+      - release
+    uses: ctfpilot/ci/.github/workflows/docker.yml@v1.6.0-r.2
+    if: needs.release.outputs.version != '' && needs.release.outputs.version != null
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    with:
+      runner: ubuntu-latest
+      repository: brunnerne/ctfpilot-flight-ops
+      semver: ${{ needs.release.outputs.version }}
+      dockerfile: Dockerfile.dispatcher
+      image_name: ${{ github.repository }}-dispatcher
+      arguments: |
+        VERSION=${{ needs.release.outputs.version }}
+      cacheFrom: ""
+      cacheTo: ""

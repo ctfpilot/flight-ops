@@ -1,0 +1,18 @@
+apiVersion: challenges.ctfpilot.com/v1alpha1
+kind: Flight
+metadata:
+  name: flight-srt-local01
+  namespace: flights-instanced
+  labels:
+    flight.ctfpilot.com/mode: "instanced"
+    flight.ctfpilot.com/name: "echo-hello-world"
+    flight.ctfpilot.com/id: "srt-local01"
+    flight.ctfpilot.com/owner: "usr-1042"
+    ctfpilot.com/component: "flight"
+spec:
+  flightPlanRef: "echo-hello-world"
+  ownerID: "usr-1042"
+  terminalID: "local-dev"
+  deploymentID: "srt-local01"
+  ttl: 1800 # Time-to-live in seconds (30 minutes)
+  domain: "localhost"

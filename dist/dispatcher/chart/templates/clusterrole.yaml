@@ -1,0 +1,15 @@
+{{- if .Values.rbac.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "dispatcher.fullname" . }}
+  labels:
+    {{- include "dispatcher.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["challenges.ctfpilot.com"]
+    resources: ["flightplans"]
+    verbs: ["get", "list"]
+  - apiGroups: ["challenges.ctfpilot.com"]
+    resources: ["flights"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+{{- end }}

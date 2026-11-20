@@ -1,0 +1,768 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+    control-plane: controller-manager
+  name: flight-ops-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: flightplans.challenges.ctfpilot.com
+spec:
+  group: challenges.ctfpilot.com
+  names:
+    kind: FlightPlan
+    listKind: FlightPlanList
+    plural: flightplans
+    singular: flightplan
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: FlightPlan is the static definition/blueprint of a challenge
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: FlightPlanSpec defines the desired state of FlightPlan
+            properties:
+              category:
+                description: Category is the type of challenge (web, pwn, crypto,
+                  etc.)
+                type: string
+              defaultTTL:
+                description: DefaultTTL is the default Time-To-Live in seconds for
+                  instanced flights (e.g., 3600)
+                format: int32
+                type: integer
+              endpoints:
+                description: Endpoints defines domain routing rules for Traefik and
+                  connection strings
+                properties:
+                  subdomains:
+                    description: |-
+                      Subdomains defines the instanced subdomains for dynamic routing via Traefik (over TLS 443)
+                      Corresponds to CTF Pilot instanced_subdomains
+                    items:
+                      description: SubdomainSpec defines a single entry in instanced_subdomains
+                      properties:
+                        connectionTemplate:
+                          description: |-
+                            ConnectionTemplate is a raw string format shown in CTFd for static/shared challenges.
+                            Supports variable substitution like "{{ .host }}" or "nc {{ .host }} 1337"
+                          type: string
+                        name:
+                          description: Name is the subdomain prefix (e.g. "api", "admin",
+                            "pwn")
+                          type: string
+                        protocol:
+                          default: web
+                          description: Protocol dictates how Traefik routes traffic
+                            (web = HTTP Ingress, tcp = IngressRouteTCP)
+                          enum:
+                          - web
+                          - tcp
+                          type: string
+                      required:
+                      - name
+                      - protocol
+                      type: object
+                    type: array
+                type: object
+              firstDepartureAt:
+                description: |-
+                  FirstDepartureAt is a Unix timestamp indicating when this flight is allowed to first be launched.
+                  0 means immediately available.
+                format: int64
+                type: integer
+              mode:
+                description: Mode dictates where this flight lands ("shared" or "instanced")
+                enum:
+                - shared
+                - instanced
+                type: string
+              resources:
+                description: Resources contains raw Kubernetes manifests (Deployments,
+                  Services, Traefik Ingresses)
+                items:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                type: array
+                x-kubernetes-preserve-unknown-fields: true
+            required:
+            - category
+            - mode
+            - resources
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: flights.challenges.ctfpilot.com
+spec:
+  group: challenges.ctfpilot.com
+  names:
+    kind: Flight
+    listKind: FlightList
+    plural: flights
+    singular: flight
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Flight is the dynamic, per-player instance managed by GroundControl
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: FlightSpec defines the desired state of an active player
+              mission
+            properties:
+              deploymentID:
+                description: DeploymentID is the unique identifier (UUID) for this
+                  specific execution
+                type: string
+              domain:
+                description: Domain is the base domain used to construct instanced
+                  subdomains (e.g. "inst.ctfpilot.com")
+                type: string
+              flightPlanRef:
+                description: FlightPlanRef is the metadata name/slug of the parent
+                  FlightPlan
+                type: string
+              ownerID:
+                description: OwnerID is the player or team ID requesting the instance
+                type: string
+              terminalID:
+                description: TerminalID is the Terminal ID (e.g. "ctfd-primary", "ctfd-university")
+                type: string
+              ttl:
+                description: |-
+                  TTL specifies how long (in seconds) this instance stays alive before auto-cleanup.
+                  Defaults to FlightPlan.spec.defaultTTL if omitted.
+                format: int32
+                type: integer
+            required:
+            - deploymentID
+            - domain
+            - flightPlanRef
+            - ownerID
+            - terminalID
+            type: object
+          status:
+            description: FlightStatus defines the observed state of an active mission
+            properties:
+              connectionStrings:
+                description: |-
+                  ConnectionStrings contains the rendered connection endpoints returned to Terminal
+                  e.g. ["https://usr1042-web.inst.ctfpilot.com", "nc usr1042-pwn.inst.ctfpilot.com 443"]
+                items:
+                  type: string
+                type: array
+              expiresAt:
+                description: ExpiresAt is the timestamp when GroundControl will clean
+                  up this instance
+                format: date-time
+                type: string
+              launchedAt:
+                description: LaunchedAt is the timestamp when reconciliation completed
+                  and pods went ready
+                format: date-time
+                type: string
+              phase:
+                description: Phase is the current execution state (Pending, InFlight,
+                  Landed, Failed)
+                enum:
+                - Pending
+                - InFlight
+                - Landed
+                - Failed
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-controller-manager
+  namespace: flight-ops-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-leader-election-role
+  namespace: flight-ops-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-flight-admin-role
+rules:
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flights
+  verbs:
+  - '*'
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flights/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-flight-editor-role
+rules:
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flights
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flights/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-flight-viewer-role
+rules:
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flights
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flights/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-flightplan-admin-role
+rules:
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans
+  verbs:
+  - '*'
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-flightplan-editor-role
+rules:
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-flightplan-viewer-role
+rules:
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: flight-ops-manager-role
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - configmaps
+  - deployments
+  - ingresses
+  - ingressroutes
+  - ingressroutetcps
+  - ingressrouteudps
+  - middlewares
+  - persistentvolumeclaims
+  - pods
+  - secrets
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans
+  - flights
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans/finalizers
+  - flights/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans/status
+  - flights/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: flight-ops-metrics-auth-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: flight-ops-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-leader-election-rolebinding
+  namespace: flight-ops-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flight-ops-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: flight-ops-controller-manager
+  namespace: flight-ops-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: flight-ops-manager-role
+subjects:
+- kind: ServiceAccount
+  name: flight-ops-controller-manager
+  namespace: flight-ops-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: flight-ops-metrics-auth-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: flight-ops-metrics-auth-role
+subjects:
+- kind: ServiceAccount
+  name: flight-ops-controller-manager
+  namespace: flight-ops-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+    control-plane: controller-manager
+  name: flight-ops-controller-manager-metrics-service
+  namespace: flight-ops-system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app.kubernetes.io/name: flight-ops
+    control-plane: controller-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-webhook-service
+  namespace: flight-ops-system
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
+  selector:
+    app.kubernetes.io/name: flight-ops
+    control-plane: controller-manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+    control-plane: controller-manager
+  name: flight-ops-controller-manager
+  namespace: flight-ops-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: flight-ops
+      control-plane: controller-manager
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        app.kubernetes.io/name: flight-ops
+        control-plane: controller-manager
+    spec:
+      containers:
+      - args:
+        - --metrics-bind-address=:8443
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+        command:
+        - /manager
+        image: ghcr.io/brunnerne/ctfpilot-flight-ops-groundcontrol:1.6.13
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: manager
+        ports:
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: webhook-certs
+          readOnly: true
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: flight-ops-controller-manager
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: webhook-server-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-metrics-certs
+  namespace: flight-ops-system
+spec:
+  dnsNames:
+  - SERVICE_NAME.SERVICE_NAMESPACE.svc
+  - SERVICE_NAME.SERVICE_NAMESPACE.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: flight-ops-selfsigned-issuer
+  secretName: metrics-server-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-serving-cert
+  namespace: flight-ops-system
+spec:
+  dnsNames:
+  - flight-ops-webhook-service.flight-ops-system.svc
+  - flight-ops-webhook-service.flight-ops-system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: flight-ops-selfsigned-issuer
+  secretName: webhook-server-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: flight-ops
+  name: flight-ops-selfsigned-issuer
+  namespace: flight-ops-system
+spec:
+  selfSigned: {}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: flight-ops-system/flight-ops-serving-cert
+  name: flight-ops-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: flight-ops-webhook-service
+      namespace: flight-ops-system
+      path: /mutate-challenges-ctfpilot-com-v1alpha1-flightplan
+  failurePolicy: Fail
+  name: mflightplan-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - challenges.ctfpilot.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - flightplans
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: flight-ops-system/flight-ops-serving-cert
+  name: flight-ops-validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: flight-ops-webhook-service
+      namespace: flight-ops-system
+      path: /validate-challenges-ctfpilot-com-v1alpha1-flightplan
+  failurePolicy: Fail
+  name: vflightplan-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - challenges.ctfpilot.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - flightplans
+  sideEffects: None

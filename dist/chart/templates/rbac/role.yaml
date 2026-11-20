@@ -1,0 +1,61 @@
+{{- if .Values.rbac.enable }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  name: flight-ops-manager-role
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - configmaps
+  - deployments
+  - ingresses
+  - ingressroutes
+  - ingressroutetcps
+  - ingressrouteudps
+  - middlewares
+  - persistentvolumeclaims
+  - pods
+  - secrets
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans
+  - flights
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans/finalizers
+  - flights/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - challenges.ctfpilot.com
+  resources:
+  - flightplans/status
+  - flights/status
+  verbs:
+  - get
+  - patch
+  - update
+{{- end -}}

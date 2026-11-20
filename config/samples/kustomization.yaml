@@ -1,0 +1,5 @@
+## Append samples of your project ##
+resources:
+  - challenges_v1alpha1_flightplan.yaml
+  - challenges_v1alpha1_flight.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
