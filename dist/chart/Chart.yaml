@@ -2,6 +2,6 @@ apiVersion: v2
 name: flight-ops
 description: A Helm chart to distribute the project flight-ops
 type: application
-version: 1.0.1-r.1
-appVersion: "1.0.1-r.1"
+version: 1.0.1
+appVersion: "1.0.1"
 icon: "https://example.com/icon.png"
