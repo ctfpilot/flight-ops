@@ -25,6 +25,11 @@ func (d *Dispatcher) generateDeploymentID(flightPlan string) (string, error) {
 	randLength := 8
 	randPart := encrypted[:randLength]
 
+	// Limit size of deployment id
+	if len(flightPlan) > 32 {
+		flightPlan = flightPlan[:32]
+	}
+
 	return fmt.Sprintf("%s-%x-%s", flightPlan, randPart, d.Terminal), nil
 }
 
