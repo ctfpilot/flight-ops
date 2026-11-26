@@ -55,7 +55,7 @@ type TemplateContext struct {
 // +kubebuilder:rbac:groups=challenges.ctfpilot.com,resources=flights/finalizers,verbs=update
 
 // Allow the controller to manage the resources it creates (Deployments, Services, etc.)
-// +kubebuilder:rbac:groups="*",resources=ingresses;ingressroutes;ingressroutetcps;ingressrouteudps;pods;deployments;services;secrets;configmaps;persistentvolumeclaims;middlewares,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="*",resources=ingresses;ingressroutes;ingressroutetcps;ingressrouteudps;pods;deployments;services;secrets;configmaps;persistentvolumeclaims;middlewares;networkpolicies,verbs=get;list;watch;create;update;patch;delete
 
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.24.1/pkg/reconcile

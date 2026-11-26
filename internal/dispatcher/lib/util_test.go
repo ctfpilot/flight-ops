@@ -170,4 +170,19 @@ func TestGenerateDeploymentID(t *testing.T) {
 			t.Errorf("Expected different deployment IDs for different server secrets, got %s and %s", deploymentID1, deploymentID2)
 		}
 	})
+
+	t.Run("deployment id starts with flight plan name", func(t *testing.T) {
+		flightPlan := strings.Repeat("a", 33) // 33 characters long flight plan name (exceeds the 32 character limit)
+		deploymentID, err := dispatcher.generateDeploymentID(flightPlan)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		if strings.HasPrefix(deploymentID, flightPlan) {
+			t.Errorf("Expected deployment ID to not start with the full %s, got %s", flightPlan, deploymentID)
+		}
+		if !strings.HasPrefix(deploymentID, flightPlan[:32]) {
+			t.Errorf("Expected deployment ID to start with %s, got %s", flightPlan, deploymentID)
+		}
+	})
 }
