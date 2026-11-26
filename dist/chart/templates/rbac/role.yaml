@@ -17,6 +17,7 @@ rules:
   - ingressroutetcps
   - ingressrouteudps
   - middlewares
+  - networkpolicies
   - persistentvolumeclaims
   - pods
   - secrets
