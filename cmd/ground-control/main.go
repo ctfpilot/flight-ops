@@ -79,7 +79,7 @@ func main() {
 	flag.StringVar(&nsInstanced, "namespace-instanced", "flights-instanced", "Namespace for dynamic player flights.")
 	flag.StringVar(&allowedKindsStr, "allowed-kinds",
 		"Deployment,Service,ConfigMap,Secret,Ingress,IngressRoute,IngressRouteTCP,IngressRouteUDP,"+
-			"PersistentVolumeClaim,Middleware",
+			"PersistentVolumeClaim,Middleware,NetworkPolicy",
 		"Comma-separated list of allowed K8s resource Kinds in FlightPlans")
 	flag.StringVar(&registryPrefix, "registry-prefix", "ghcr.io",
 		"Container registry base (e.g. ghcr.io) for instanced flights.")
